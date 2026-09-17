@@ -12,6 +12,7 @@ try:
 except ImportError:
     from langchain_classic.chains.combine_documents import create_stuff_documents_chain
     from langchain_classic.chains import create_retrieval_chain
+
 from src.helper import download_hugging_face_embeddings
 from src.prompt import system_prompt
 from src.logger import logger
@@ -23,6 +24,8 @@ load_dotenv()
 # Normalize environment keys
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY") 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_TOKEN")
+
 if not PINECONE_API_KEY:
     logger.critical("PINECONE_API_KEY or 'pinecone' key missing from .env file.")
     raise ValueError("PINECONE_API_KEY or 'pinecone' key not found in .env file.")
@@ -32,6 +35,8 @@ if not GROQ_API_KEY:
 
 os.environ["PINECONE_API_KEY"] = PINECONE_API_KEY
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+if HUGGINGFACEHUB_API_TOKEN:
+    os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
 
 INDEX_NAME = "medical-chatbot"
 MODEL_NAME = "Groq (Qwen 3.8-27B)"
@@ -80,6 +85,13 @@ def init_rag_system():
         raise MedicalBotException(e, sys)
 
 
+# Eager initialization for production WSGI servers (e.g. Gunicorn on Render)
+try:
+    init_rag_system()
+except Exception as e:
+    logger.warning(f"RAG startup deferred or failed during import: {e}")
+
+
 @app.route("/")
 def index():
     logger.info("Serving chat interface homepage.")
@@ -104,8 +116,12 @@ def chat():
         return jsonify({"error": "Empty message received."}), 400
 
     if rag_chain is None:
-        logger.error("Query received before RAG pipeline was initialized.")
-        return jsonify({"error": "Medical assistant is currently initializing. Please try again shortly."}), 503
+        try:
+            logger.info("RAG chain uninitialized, attempting lazy initialization...")
+            init_rag_system()
+        except Exception as e:
+            logger.error(f"RAG initialization failed: {e}")
+            return jsonify({"error": "Medical assistant is currently initializing. Please try again shortly."}), 503
 
     logger.info(f"Received user query: '{user_input[:80]}...' (length: {len(user_input)})")
 
@@ -154,9 +170,10 @@ def internal_error(error):
 
 if __name__ == "__main__":
     try:
-        init_rag_system()
-        logger.info("Starting Flask application on http://127.0.0.1:5003 ...")
+        if rag_chain is None:
+            init_rag_system()
         port = int(os.environ.get("PORT", 5003))
-        app.run(host="127.0.0.1", port=port, debug=False)
+        logger.info(f"Starting Flask application on 0.0.0.0:{port} ...")
+        app.run(host="0.0.0.0", port=port, debug=False)
     except Exception as e:
         logger.critical(f"Application failed to start: {str(e)}")
