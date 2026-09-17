@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot AI - Medical Knowledge Assistant</title>
+    <meta name="description" content="AI-powered medical assistant providing evidence-based healthcare guidance and symptom information.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div class="brand-info">
+                    <h2>MediBot AI</h2>
+                    <span class="badge"><i class="fa-solid fa-circle-check"></i> Clinical Assistant</span>
+                </div>
+            </div>
+
+            <div class="system-status-card">
+                <div class="status-header">
+                    <span class="status-dot"></span>
+                    <span class="status-title">Clinical Assistant Active</span>
+                </div>
+                <div class="status-details">
+                    <div class="status-item">
+                        <span class="label">Service:</span>
+                        <span class="val">Health Triage & Guidance</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Reference:</span>
+                        <span class="val">Verified Medical Literature</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Availability:</span>
+                        <span class="val">24/7 Virtual Support</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Response Mode:</span>
+                        <span class="val">Evidence-Based</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Quick Inquiries</h3>
+                <div class="starter-prompts">
+                    <button class="prompt-chip" data-query="What are the symptoms and causes of hypertension?">
+                        <i class="fa-solid fa-stethoscope"></i> Symptoms of Hypertension
+                    </button>
+                    <button class="prompt-chip" data-query="How is bronchial asthma diagnosed and treated?">
+                        <i class="fa-solid fa-lungs"></i> Asthma Diagnosis & Care
+                    </button>
+                    <button class="prompt-chip" data-query="What are common signs of Type 2 Diabetes?">
+                        <i class="fa-solid fa-droplet"></i> Signs of Type 2 Diabetes
+                    </button>
+                    <button class="prompt-chip" data-query="What immediate first aid is recommended for heat stroke?">
+                        <i class="fa-solid fa-kit-medical"></i> Heat Stroke First Aid
+                    </button>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <button id="clearChatBtn" class="secondary-btn">
+                    <i class="fa-solid fa-trash-can"></i> Clear Conversation
+                </button>
+                <div class="disclaimer-mini">
+                    <i class="fa-solid fa-shield-halved"></i> For informational guidance only. Not a substitute for clinical advice.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-wrapper">
+            <!-- Top Navigation Bar -->
+            <header class="chat-header">
+                <div class="header-left">
+                    <button class="mobile-toggle-btn" id="mobileToggleBtn" aria-label="Toggle Menu">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="header-titles">
+                        <h1>Medical Knowledge Assistant</h1>
+                        <p>Evidence-based clinical literature & health guidance</p>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-status-group">
+                        <div class="verified-indicator">
+                            <i class="fa-solid fa-circle-check"></i> Verified Clinical AI
+                        </div>
+                        <div class="emergency-badge">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Emergency: <span>Call 911 / 112</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Message Feed -->
+            <section class="messages-container" id="messagesContainer">
+                <div class="message bot-message intro-message">
+                    <div class="msg-avatar">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </div>
+                    <div class="msg-content">
+                        <div class="msg-header">
+                            <span class="bot-name">MediBot</span>
+                            <span class="msg-time">Just now</span>
+                        </div>
+                        <div class="msg-text">
+                            Hello! I am <strong>MediBot</strong>, your personal healthcare assistant.
+                            <br><br>
+                            I provide clear, evidence-based answers to your questions about medical symptoms, conditions, medications, and general wellness based on peer-reviewed clinical literature.
+                            <br><br>
+                            How can I assist you with your health inquiry today?
+                        </div>
+                        <div class="disclaimer-alert">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span>Always consult a certified healthcare professional for formal diagnosis, prescriptions, and emergencies.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Typing indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <span>Consulting verified medical literature...</span>
+            </div>
+
+            <!-- Input Form -->
+            <footer class="input-container">
+                <form id="chatForm" class="chat-form">
+                    <div class="input-wrapper">
+                        <textarea
+                            id="userInput"
+                            rows="1"
+                            placeholder="Ask any medical question (e.g. symptoms, treatments, diagnosis)..."
+                            required
+                        ></textarea>
+                        <button type="submit" id="sendBtn" class="send-btn" aria-label="Send query">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                <div class="input-disclaimer">
+                    MediBot provides medical insights for informational purposes only. Always consult a physician for clinical diagnosis and emergency care.
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
