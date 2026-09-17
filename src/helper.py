@@ -6,11 +6,6 @@ try:
 except ImportError:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-try:
-    from langchain_huggingface import HuggingFaceEmbeddings
-except ImportError:
-    from langchain_community.embeddings import HuggingFaceEmbeddings
-
 from src.logger import logger
 from src.exception import MedicalBotException
 
@@ -64,17 +59,45 @@ def text_split(extracted_data, chunk_size: int = 500, chunk_overlap: int = 50):
 
 def download_hugging_face_embeddings(model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
     """
-    Downloads and initializes the Hugging Face sentence-transformers embedding model.
-    Produces 384-dimensional dense vectors.
+    Initializes embeddings for 384-dimensional dense vectors.
+    If HUGGINGFACEHUB_API_TOKEN or HF_TOKEN is configured in the environment,
+    uses Hugging Face Inference API (zero local RAM overhead, ideal for Render free tier 512MB).
+    Otherwise, falls back to local HuggingFaceEmbeddings if PyTorch / sentence-transformers is installed.
     """
-    logger.info(f"Loading HuggingFace embedding model: {model_name}")
+    hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN") or os.getenv("HF_TOKEN")
+
+    if hf_token:
+        logger.info(f"Using Hugging Face Inference Endpoint for '{model_name}' (low memory mode).")
+        try:
+            from langchain_huggingface import HuggingFaceEndpointEmbeddings
+            embeddings = HuggingFaceEndpointEmbeddings(
+                model=model_name,
+                huggingfacehub_api_token=hf_token
+            )
+            logger.info("HuggingFace Endpoint embeddings initialized successfully.")
+            return embeddings
+        except Exception as e:
+            logger.error(f"Failed to initialize Hugging Face Endpoint embeddings: {str(e)}")
+            raise MedicalBotException(e, sys)
+
+    logger.info(f"HUGGINGFACEHUB_API_TOKEN not detected. Attempting local Hugging Face embeddings for '{model_name}'...")
     try:
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except ImportError:
+            from langchain_community.embeddings import HuggingFaceEmbeddings
+
         embeddings = HuggingFaceEmbeddings(
             model_name=model_name,
             model_kwargs={"device": "cpu"}
         )
-        logger.info(f"Embedding model '{model_name}' successfully loaded.")
+        logger.info(f"Local embedding model '{model_name}' successfully loaded.")
         return embeddings
     except Exception as e:
-        logger.error(f"Failed to load embedding model: {model_name}")
-        raise MedicalBotException(e, sys)
+        err_msg = (
+            f"Failed to load local embedding model '{model_name}': {str(e)}. "
+            "If deploying to Render (512MB RAM limit), set the HUGGINGFACEHUB_API_TOKEN environment variable "
+            "in the Render dashboard to use the cloud inference API instead of local PyTorch."
+        )
+        logger.error(err_msg)
+        raise MedicalBotException(err_msg, sys)
